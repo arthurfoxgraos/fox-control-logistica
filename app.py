@@ -455,7 +455,8 @@ def interface_edicao_caminhoes(df_filtered):
             opcoes_edicao = []
             for _, row in df_filtered.iterrows():
                 status_ajuste = "✏️ MANUAL" if row['ajuste_manual'] else "🔢 AUTO"
-                opcao = f"ID {row['id']} - {row['buyer'][:25]}... - {row['amount_allocated']:,.0f} sacas - {status_ajuste}"
+                # Mostrar vendedor primeiro, depois comprador
+                opcao = f"ID {row['id']} - {row['seller'][:25]}... → {row['buyer'][:25]}... - {row['amount_allocated']:,.0f} sacas - {status_ajuste}"
                 opcoes_edicao.append(opcao)
             
             carga_selecionada_idx = st.selectbox(
@@ -473,6 +474,7 @@ def interface_edicao_caminhoes(df_filtered):
                 info_text = f"""
                 **Carga Selecionada:**
                 - **ID**: {id_selecionado}
+                - **Vendedor**: {row_selecionada['seller']}
                 - **Comprador**: {row_selecionada['buyer']}
                 - **Sacas**: {row_selecionada['amount_allocated']:,.0f}
                 - **Distância**: {row_selecionada['distance']:.1f} km
@@ -594,7 +596,7 @@ def interface_edicao_caminhoes(df_filtered):
                 if not linha.empty:
                     row = linha.iloc[0]
                     st.text(f"ID {id_str}: {ajuste['caminhoes_manual']} caminhões")
-                    st.caption(f"{row['buyer'][:20]}... - {row['amount_allocated']:,.0f} sacas")
+                    st.caption(f"{row['seller'][:20]}... → {row['buyer'][:20]}... - {row['amount_allocated']:,.0f} sacas")
                     st.caption(f"Por: {ajuste.get('usuario', 'N/A')}")
 
 # Interface principal
@@ -706,7 +708,7 @@ with tab1:
         # Seletor de carga para reagendar
         if not df_filtered.empty:
             opcoes_reagendamento = [
-                f"ID {row['id']} - {row['buyer'][:30]}... - {row['amount_allocated']:,.0f} sacas"
+                f"ID {row['id']} - {row['seller'][:25]}... → {row['buyer'][:25]}... - {row['amount_allocated']:,.0f} sacas"
                 for _, row in df_filtered.iterrows()
             ]
             
