@@ -86,12 +86,19 @@ def salvar_ajuste_caminhoes(carga_id, caminhoes_manual, caminhoes_calculado, usu
     try:
         cursor = conn.cursor()
         
+        # Converter tipos numpy para Python nativos para compatibilidade com PostgreSQL
+        carga_id_int = int(carga_id) if hasattr(carga_id, 'item') else int(carga_id)
+        caminhoes_manual_int = int(caminhoes_manual) if hasattr(caminhoes_manual, 'item') else int(caminhoes_manual)
+        caminhoes_calculado_int = int(caminhoes_calculado) if hasattr(caminhoes_calculado, 'item') else int(caminhoes_calculado)
+        usuario_str = str(usuario)
+        observacoes_str = str(observacoes) if observacoes else ""
+        
         # Inserir novo ajuste (o trigger desativará os anteriores automaticamente)
         cursor.execute("""
             INSERT INTO fox_control_ajustes_caminhoes 
             (carga_id, caminhoes_manual, caminhoes_calculado, usuario, observacoes)
             VALUES (%s, %s, %s, %s, %s)
-        """, (carga_id, caminhoes_manual, caminhoes_calculado, usuario, observacoes))
+        """, (carga_id_int, caminhoes_manual_int, caminhoes_calculado_int, usuario_str, observacoes_str))
         
         conn.commit()
         cursor.close()
@@ -113,12 +120,15 @@ def remover_ajuste_caminhoes(carga_id):
     try:
         cursor = conn.cursor()
         
+        # Converter tipo numpy para Python nativo
+        carga_id_int = int(carga_id) if hasattr(carga_id, 'item') else int(carga_id)
+        
         # Desativar ajuste
         cursor.execute("""
             UPDATE fox_control_ajustes_caminhoes 
             SET ativo = FALSE, data_atualizacao = CURRENT_TIMESTAMP
             WHERE carga_id = %s AND ativo = TRUE
-        """, (carga_id,))
+        """, (carga_id_int,))
         
         conn.commit()
         cursor.close()
