@@ -795,32 +795,54 @@ with tab3:
     with col2:
         # Gráfico de ajustes manuais vs automáticos
         ajustes_stats = df_filtered['ajuste_manual'].value_counts()
-        ajustes_labels = ['Cálculo Automático', 'Ajuste Manual']
-        fig_ajustes = px.pie(
-            values=ajustes_stats.values,
-            names=ajustes_labels,
-            title="Distribuição: Automático vs Manual",
-            color_discrete_map={'Cálculo Automático': '#6bcf7f', 'Ajuste Manual': '#ff6b6b'}
-        )
-        st.plotly_chart(fig_ajustes, use_container_width=True)
+        
+        # Verificar se há dados suficientes para o gráfico de pizza
+        if len(ajustes_stats) > 0 and not ajustes_stats.empty:
+            # Criar labels baseados nos dados reais
+            ajustes_labels = []
+            ajustes_values = []
+            
+            for valor, count in ajustes_stats.items():
+                if valor == False:
+                    ajustes_labels.append('Cálculo Automático')
+                else:
+                    ajustes_labels.append('Ajuste Manual')
+                ajustes_values.append(count)
+            
+            # Só criar o gráfico se houver dados válidos
+            if len(ajustes_values) > 0:
+                fig_ajustes = px.pie(
+                    values=ajustes_values,
+                    names=ajustes_labels,
+                    title="Distribuição: Automático vs Manual",
+                    color_discrete_map={'Cálculo Automático': '#6bcf7f', 'Ajuste Manual': '#ff6b6b'}
+                )
+                st.plotly_chart(fig_ajustes, use_container_width=True)
+            else:
+                st.info("📊 Não há dados suficientes para exibir o gráfico de distribuição.")
+        else:
+            st.info("📊 Não há dados de ajustes para exibir.")
         
         # Gráfico de eficiência de frete
-        fig_eficiencia_frete = px.scatter(
-            df_filtered,
-            x='distance',
-            y='frete_por_saca',
-            size='amount_allocated',
-            color='ajuste_manual',
-            title="Eficiência do Frete por Distância",
-            labels={
-                'distance': 'Distância (km)',
-                'frete_por_saca': 'Frete por Saca (R$)',
-                'amount_allocated': 'Sacas',
-                'ajuste_manual': 'Tipo'
-            },
-            color_discrete_map={True: '#ff6b6b', False: '#6bcf7f'}
-        )
-        st.plotly_chart(fig_eficiencia_frete, use_container_width=True)
+        if not df_filtered.empty and len(df_filtered) > 0:
+            fig_eficiencia_frete = px.scatter(
+                df_filtered,
+                x='distance',
+                y='frete_por_saca',
+                size='amount_allocated',
+                color='ajuste_manual',
+                title="Eficiência do Frete por Distância",
+                labels={
+                    'distance': 'Distância (km)',
+                    'frete_por_saca': 'Frete por Saca (R$)',
+                    'amount_allocated': 'Sacas',
+                    'ajuste_manual': 'Tipo'
+                },
+                color_discrete_map={True: '#ff6b6b', False: '#6bcf7f'}
+            )
+            st.plotly_chart(fig_eficiencia_frete, use_container_width=True)
+        else:
+            st.info("📊 Não há dados suficientes para exibir o gráfico de eficiência.")
 
 with tab4:
     st.header("🗺️ Otimização de Rotas por Data")
@@ -829,55 +851,70 @@ with tab4:
     st.subheader("📍 Cargas por Data e Região")
     
     # Gráfico de timeline de cargas com indicação de ajustes manuais
-    fig_timeline = px.scatter(
-        df_filtered,
-        x='data_agendamento',
-        y='buyer',
-        size='amount_allocated',
-        color='ajuste_manual',
-        title="Timeline de Cargas por Comprador",
-        labels={
-            'data_agendamento': 'Data de Agendamento',
-            'buyer': 'Comprador',
-            'amount_allocated': 'Sacas',
-            'ajuste_manual': 'Tipo de Cálculo'
-        },
-        color_discrete_map={True: '#ff6b6b', False: '#6bcf7f'}
-    )
-    st.plotly_chart(fig_timeline, use_container_width=True)
+    if not df_filtered.empty and len(df_filtered) > 0:
+        fig_timeline = px.scatter(
+            df_filtered,
+            x='data_agendamento',
+            y='buyer',
+            size='amount_allocated',
+            color='ajuste_manual',
+            title="Timeline de Cargas por Comprador",
+            labels={
+                'data_agendamento': 'Data de Agendamento',
+                'buyer': 'Comprador',
+                'amount_allocated': 'Sacas',
+                'ajuste_manual': 'Tipo de Cálculo'
+            },
+            color_discrete_map={True: '#ff6b6b', False: '#6bcf7f'}
+        )
+        st.plotly_chart(fig_timeline, use_container_width=True)
+    else:
+        st.info("📊 Não há dados suficientes para exibir o timeline de cargas.")
     
     # Tabela de otimização
     st.subheader("🎯 Sugestões de Otimização")
     
-    # Calcular score de otimização
-    df_otimizacao = df_filtered.copy()
-    df_otimizacao['score_otimizacao'] = (
-        (df_otimizacao['margem_lucro'] / df_otimizacao['margem_lucro'].max()) * 0.4 +
-        (1 - df_otimizacao['distance'] / df_otimizacao['distance'].max()) * 0.3 +
-        (df_otimizacao['amount_allocated'] / df_otimizacao['amount_allocated'].max()) * 0.3
-    ) * 100
-    
-    otimizacao_display = df_otimizacao[['data_agendamento', 'buyer', 'amount_allocated', 
-                                       'distance', 'frete_por_saca', 'margem_lucro', 
-                                       'caminhoes_necessarios', 'ajuste_manual', 'score_otimizacao']].copy()
-    
-    otimizacao_display.columns = ['Data', 'Comprador', 'Sacas', 'Distância', 
-                                  'Frete/Saca', 'Margem(%)', 'Caminhões', 'Manual', 'Score Otim.']
-    
-    # Ordenar por score de otimização
-    otimizacao_display = otimizacao_display.sort_values('Score Otim.', ascending=False)
-    
-    # Formatar valores
-    otimizacao_display['Data'] = pd.to_datetime(otimizacao_display['Data']).dt.strftime('%d/%m/%Y')
-    otimizacao_display['Sacas'] = otimizacao_display['Sacas'].apply(lambda x: f"{x:,.0f}")
-    otimizacao_display['Distância'] = otimizacao_display['Distância'].apply(lambda x: f"{x:.1f} km")
-    otimizacao_display['Frete/Saca'] = otimizacao_display['Frete/Saca'].apply(lambda x: f"R$ {x:.2f}")
-    otimizacao_display['Margem(%)'] = otimizacao_display['Margem(%)'].apply(lambda x: f"{x:.1f}%")
-    otimizacao_display['Score Otim.'] = otimizacao_display['Score Otim.'].apply(lambda x: f"{x:.1f}")
-    otimizacao_display['Comprador'] = otimizacao_display['Comprador'].apply(lambda x: x[:30] + "..." if len(x) > 30 else x)
-    otimizacao_display['Manual'] = otimizacao_display['Manual'].apply(lambda x: "✏️" if x else "🔢")
-    
-    st.dataframe(otimizacao_display, use_container_width=True)
+    # Calcular score de otimização apenas se há dados
+    if not df_filtered.empty and len(df_filtered) > 0:
+        df_otimizacao = df_filtered.copy()
+        
+        # Verificar se há valores válidos para evitar divisão por zero
+        max_margem = df_otimizacao['margem_lucro'].max()
+        max_distance = df_otimizacao['distance'].max()
+        max_amount = df_otimizacao['amount_allocated'].max()
+        
+        if max_margem > 0 and max_distance > 0 and max_amount > 0:
+            df_otimizacao['score_otimizacao'] = (
+                (df_otimizacao['margem_lucro'] / max_margem) * 0.4 +
+                (1 - df_otimizacao['distance'] / max_distance) * 0.3 +
+                (df_otimizacao['amount_allocated'] / max_amount) * 0.3
+            ) * 100
+        else:
+            df_otimizacao['score_otimizacao'] = 50.0  # Score padrão
+        
+        otimizacao_display = df_otimizacao[['data_agendamento', 'buyer', 'amount_allocated', 
+                                           'distance', 'frete_por_saca', 'margem_lucro', 
+                                           'caminhoes_necessarios', 'ajuste_manual', 'score_otimizacao']].copy()
+        
+        otimizacao_display.columns = ['Data', 'Comprador', 'Sacas', 'Distância', 
+                                      'Frete/Saca', 'Margem(%)', 'Caminhões', 'Manual', 'Score Otim.']
+        
+        # Ordenar por score de otimização
+        otimizacao_display = otimizacao_display.sort_values('Score Otim.', ascending=False)
+        
+        # Formatar valores
+        otimizacao_display['Data'] = pd.to_datetime(otimizacao_display['Data']).dt.strftime('%d/%m/%Y')
+        otimizacao_display['Sacas'] = otimizacao_display['Sacas'].apply(lambda x: f"{x:,.0f}")
+        otimizacao_display['Distância'] = otimizacao_display['Distância'].apply(lambda x: f"{x:.1f} km")
+        otimizacao_display['Frete/Saca'] = otimizacao_display['Frete/Saca'].apply(lambda x: f"R$ {x:.2f}")
+        otimizacao_display['Margem(%)'] = otimizacao_display['Margem(%)'].apply(lambda x: f"{x:.1f}%")
+        otimizacao_display['Score Otim.'] = otimizacao_display['Score Otim.'].apply(lambda x: f"{x:.1f}")
+        otimizacao_display['Comprador'] = otimizacao_display['Comprador'].apply(lambda x: x[:30] + "..." if len(x) > 30 else x)
+        otimizacao_display['Manual'] = otimizacao_display['Manual'].apply(lambda x: "✏️" if x else "🔢")
+        
+        st.dataframe(otimizacao_display, use_container_width=True)
+    else:
+        st.info("📊 Não há dados suficientes para calcular otimizações.")
 
 with tab5:
     st.header("⚙️ Simulador de Cenários de Frete")
