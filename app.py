@@ -1015,87 +1015,34 @@ with tab5:
         )
     
     if not df_filtered.empty and 'from_coords' in df_filtered.columns and 'to_coords' in df_filtered.columns:
-        # Filtros específicos para o mapa (ocultar em modo full screen)
-        if not modo_fullscreen:
-            st.subheader("🔍 Filtros do Mapa")
-            
-            # Primeira linha de filtros
-            col_map1, col_map2 = st.columns(2)
-            
-            with col_map1:
-                # Filtro por vendedor/produtor
-                vendedores_mapa = st.multiselect(
-                    "Filtrar por Vendedor/Produtor",
-                    options=sorted(df_filtered['seller'].unique()),
-                    default=sorted(df_filtered['seller'].unique()),
-                    help="Selecione vendedores específicos para visualizar suas rotas"
-                )
-            
-            with col_map2:
-                # Filtro por comprador
-                compradores_mapa = st.multiselect(
-                    "Filtrar por Comprador",
-                    options=sorted(df_filtered['buyer'].unique()),
-                    default=sorted(df_filtered['buyer'].unique()),
-                    help="Selecione compradores específicos para visualizar suas rotas"
-                )
-            
-            # Segunda linha de filtros
-            col_map3, col_map4 = st.columns(2)
-            
-            with col_map3:
-                # Filtro por grão
-                graos_mapa = st.multiselect(
-                    "Filtrar por Grão",
-                    options=sorted(df_filtered['grain'].unique()),
-                    default=sorted(df_filtered['grain'].unique()),
-                    help="Selecione tipos de grão específicos para visualizar"
-                )
-            
-            with col_map4:
-                # Filtro por distância
-                if not df_filtered.empty:
-                    dist_min = float(df_filtered['distance'].min())
-                    dist_max = float(df_filtered['distance'].max())
-                    
-                    distancia_range = st.slider(
-                        "Faixa de distância (km)",
-                        min_value=dist_min,
-                        max_value=dist_max,
-                        value=(dist_min, dist_max),
-                        step=0.1
-                    )
-            
-            with col_map3:
-                # Filtro por distância
-                if not df_filtered.empty:
-                    dist_min = float(df_filtered['distance'].min())
-                    dist_max = float(df_filtered['distance'].max())
-                    
-                    distancia_range = st.slider(
-                        "Faixa de distância (km)",
-                        min_value=dist_min,
-                        max_value=dist_max,
-                        value=(dist_min, dist_max),
-                        step=0.1
-                    )
-        else:
-            # Em modo full screen, usar valores padrão
-            vendedores_mapa = sorted(df_filtered['seller'].unique())
-            compradores_mapa = sorted(df_filtered['buyer'].unique())
-            graos_mapa = sorted(df_filtered['grain'].unique())
-            dist_min = float(df_filtered['distance'].min())
-            dist_max = float(df_filtered['distance'].max())
-            distancia_range = (dist_min, dist_max)
+        # Usar os mesmos filtros já aplicados globalmente
+        df_mapa = df_filtered.copy()
         
-        # Aplicar filtros específicos do mapa
-        df_mapa = df_filtered[
-            (df_filtered['distance'] >= distancia_range[0]) &
-            (df_filtered['distance'] <= distancia_range[1]) &
-            (df_filtered['seller'].isin(vendedores_mapa)) &
-            (df_filtered['buyer'].isin(compradores_mapa)) &
-            (df_filtered['grain'].isin(graos_mapa))
-        ]
+        # Adicionar filtro de distância específico para o mapa
+        if not modo_fullscreen:
+            st.subheader("🔍 Filtro Adicional do Mapa")
+            
+            if not df_filtered.empty:
+                dist_min = float(df_filtered['distance'].min())
+                dist_max = float(df_filtered['distance'].max())
+                
+                distancia_range = st.slider(
+                    "Faixa de distância (km)",
+                    min_value=dist_min,
+                    max_value=dist_max,
+                    value=(dist_min, dist_max),
+                    step=0.1,
+                    key="mapa_distancia_slider"
+                )
+                
+                # Aplicar filtro de distância
+                df_mapa = df_filtered[
+                    (df_filtered['distance'] >= distancia_range[0]) &
+                    (df_filtered['distance'] <= distancia_range[1])
+                ]
+        else:
+            # Em modo full screen, usar todos os dados filtrados
+            df_mapa = df_filtered.copy()
         
         if not df_mapa.empty:
             # Processar coordenadas
