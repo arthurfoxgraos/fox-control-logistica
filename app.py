@@ -1001,43 +1001,64 @@ with tab4:
 with tab5:
     st.header("🗺️ Visualização de Rotas no Mapa")
     
+    # Botão para modo full screen
+    col_header1, col_header2 = st.columns([3, 1])
+    
+    with col_header1:
+        st.markdown("**Visualize todas as rotas de transporte em um mapa interativo**")
+    
+    with col_header2:
+        modo_fullscreen = st.toggle(
+            "🖥️ Modo Full Screen",
+            value=False,
+            help="Ativa modo tela cheia para melhor visualização"
+        )
+    
     if not df_filtered.empty and 'from_coords' in df_filtered.columns and 'to_coords' in df_filtered.columns:
-        # Filtros específicos para o mapa
-        st.subheader("🔍 Filtros do Mapa")
-        
-        col_map1, col_map2, col_map3 = st.columns(3)
-        
-        with col_map1:
-            # Filtro por número de cargas a exibir
-            max_rotas = st.slider(
-                "Número máximo de rotas",
-                min_value=1,
-                max_value=len(df_filtered),
-                value=len(df_filtered),
-                help="Limite de rotas para melhor visualização (padrão: todas as rotas)"
-            )
-        
-        with col_map2:
-            # Filtro por distância
-            if not df_filtered.empty:
-                dist_min = float(df_filtered['distance'].min())
-                dist_max = float(df_filtered['distance'].max())
-                
-                distancia_range = st.slider(
-                    "Faixa de distância (km)",
-                    min_value=dist_min,
-                    max_value=dist_max,
-                    value=(dist_min, dist_max),
-                    step=0.1
+        # Filtros específicos para o mapa (ocultar em modo full screen)
+        if not modo_fullscreen:
+            st.subheader("🔍 Filtros do Mapa")
+            
+            col_map1, col_map2, col_map3 = st.columns(3)
+            
+            with col_map1:
+                # Filtro por número de cargas a exibir
+                max_rotas = st.slider(
+                    "Número máximo de rotas",
+                    min_value=1,
+                    max_value=len(df_filtered),
+                    value=len(df_filtered),
+                    help="Limite de rotas para melhor visualização (padrão: todas as rotas)"
                 )
-        
-        with col_map3:
-            # Tipo de visualização
-            tipo_viz = st.selectbox(
-                "Tipo de visualização",
-                ["Todas as rotas", "Por vendedor", "Por comprador", "Por volume"],
-                help="Como agrupar as rotas no mapa"
-            )
+            
+            with col_map2:
+                # Filtro por distância
+                if not df_filtered.empty:
+                    dist_min = float(df_filtered['distance'].min())
+                    dist_max = float(df_filtered['distance'].max())
+                    
+                    distancia_range = st.slider(
+                        "Faixa de distância (km)",
+                        min_value=dist_min,
+                        max_value=dist_max,
+                        value=(dist_min, dist_max),
+                        step=0.1
+                    )
+            
+            with col_map3:
+                # Tipo de visualização
+                tipo_viz = st.selectbox(
+                    "Tipo de visualização",
+                    ["Todas as rotas", "Por vendedor", "Por comprador", "Por volume"],
+                    help="Como agrupar as rotas no mapa"
+                )
+        else:
+            # Em modo full screen, usar valores padrão
+            max_rotas = len(df_filtered)
+            dist_min = float(df_filtered['distance'].min())
+            dist_max = float(df_filtered['distance'].max())
+            distancia_range = (dist_min, dist_max)
+            tipo_viz = "Todas as rotas"
         
         # Aplicar filtros específicos do mapa
         df_mapa = df_filtered[
@@ -1157,22 +1178,35 @@ with tab5:
                 # Exibir mapa
                 st.subheader(f"🗺️ Mapa com {len(coordenadas_validas)} Rotas")
                 
-                # Informações do mapa
-                col_info1, col_info2, col_info3 = st.columns(3)
+                # Informações do mapa (ocultar em modo full screen)
+                if not modo_fullscreen:
+                    col_info1, col_info2, col_info3 = st.columns(3)
+                    
+                    with col_info1:
+                        st.metric("Rotas Exibidas", len(coordenadas_validas))
+                    
+                    with col_info2:
+                        total_sacas = sum(coord['sacas'] for coord in coordenadas_validas)
+                        st.metric("Total de Sacas", f"{total_sacas:,.0f}")
+                    
+                    with col_info3:
+                        dist_media = sum(coord['distancia'] for coord in coordenadas_validas) / len(coordenadas_validas)
+                        st.metric("Distância Média", f"{dist_media:.1f} km")
                 
-                with col_info1:
-                    st.metric("Rotas Exibidas", len(coordenadas_validas))
-                
-                with col_info2:
-                    total_sacas = sum(coord['sacas'] for coord in coordenadas_validas)
-                    st.metric("Total de Sacas", f"{total_sacas:,.0f}")
-                
-                with col_info3:
-                    dist_media = sum(coord['distancia'] for coord in coordenadas_validas) / len(coordenadas_validas)
-                    st.metric("Distância Média", f"{dist_media:.1f} km")
-                
-                # Renderizar mapa
-                map_data = st_folium(mapa, width=1200, height=600)
+                # Renderizar mapa com tamanho baseado no modo
+                if modo_fullscreen:
+                    # Modo full screen: mapa muito maior
+                    map_data = st_folium(mapa, width=1400, height=800)
+                    
+                    # Informações compactas em full screen
+                    st.markdown(f"""
+                    **📊 Resumo:** {len(coordenadas_validas)} rotas | 
+                    {sum(coord['sacas'] for coord in coordenadas_validas):,.0f} sacas | 
+                    {sum(coord['distancia'] for coord in coordenadas_validas) / len(coordenadas_validas):.1f} km médio
+                    """)
+                else:
+                    # Modo normal
+                    map_data = st_folium(mapa, width=1200, height=600)
                 
                 # Legenda
                 st.markdown("""
@@ -1184,8 +1218,8 @@ with tab5:
                 - **Clique nas linhas**: Ver informações da rota
                 """)
                 
-                # Estatísticas das rotas exibidas
-                if coordenadas_validas:
+                # Estatísticas das rotas exibidas (ocultar em modo full screen)
+                if coordenadas_validas and not modo_fullscreen:
                     st.subheader("📊 Estatísticas das Rotas Exibidas")
                     
                     df_stats = pd.DataFrame(coordenadas_validas)
