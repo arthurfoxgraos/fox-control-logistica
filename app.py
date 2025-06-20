@@ -858,20 +858,38 @@ with tab1:
         'Status': st.column_config.TextColumn('Status', disabled=True)
     }
     
+    # Inicializar controle de estado para evitar loop
+    if 'last_edit_hash' not in st.session_state:
+        st.session_state['last_edit_hash'] = None
+    
+    # Gerar hash dos dados atuais para controle de mudanças
+    current_hash = hash(str(edit_df.values.tobytes()))
+    
     # Editor de dados interativo
     edited_df = st.data_editor(
         edit_df,
         column_config=column_config,
         use_container_width=True,
         num_rows="fixed",
+        height=600,  # Aumentar altura da tabela
         key="tabela_edicao_principal"
     )
     
-    # Detectar mudanças e salvar automaticamente
-    if not edit_df.equals(edited_df):
+    # Gerar hash dos dados editados
+    edited_hash = hash(str(edited_df.values.tobytes()))
+    
+    # Detectar mudanças reais (evitar loop infinito)
+    if (not edit_df.equals(edited_df) and 
+        st.session_state['last_edit_hash'] != edited_hash):
+        
         st.info("💾 Mudanças detectadas! Processando alterações...")
         
+        # Atualizar hash para evitar reprocessamento
+        st.session_state['last_edit_hash'] = edited_hash
+        
         # Comparar linha por linha para identificar mudanças
+        mudancas_processadas = False
+        
         for idx, (original_row, edited_row) in enumerate(zip(edit_df.itertuples(), edited_df.itertuples())):
             original_caminhoes = original_row[9]  # Coluna Caminhões
             edited_caminhoes = edited_row[9]
@@ -892,16 +910,22 @@ with tab1:
                     f"Ajuste via edição inline - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
                 ):
                     st.success(f"✅ Caminhões atualizados para ID {id_carga}: {edited_caminhoes}")
+                    mudancas_processadas = True
                 else:
                     st.error(f"❌ Erro ao salvar ajuste para ID {id_carga}")
             
-            # Verificar mudança na data (aqui você pode implementar salvamento da data se necessário)
+            # Verificar mudança na data
             if original_data != edited_data:
                 st.info(f"📅 Data alterada para ID {id_carga}: {edited_data.strftime('%d/%m/%Y')}")
+                mudancas_processadas = True
         
-        # Recarregar dados após mudanças
-        st.cache_data.clear()
-        st.rerun()
+        # Recarregar dados apenas se houve mudanças reais
+        if mudancas_processadas:
+            st.cache_data.clear()
+            # Aguardar um pouco antes do rerun para evitar conflitos
+            import time
+            time.sleep(0.1)
+            st.rerun()
     
     # Instruções de uso
     st.caption("""
