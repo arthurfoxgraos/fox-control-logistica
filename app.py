@@ -347,7 +347,7 @@ def processar_dados_logistica(df):
         start=data_inicio_contratos,
         end=data_fim_contratos,
         periods=len(df_final)
-    ).date
+    )  # Manter como datetime para compatibilidade com filtros
     
     # Adicionar prioridade baseada na margem de lucro
     df_final['prioridade'] = pd.cut(
