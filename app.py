@@ -334,12 +334,20 @@ def processar_dados_logistica(df):
     df_final['receita_por_saca'] = (df_final['revenue'] / df_final['amount_allocated']).round(2)
     df_final['frete_por_saca'] = (df_final['freight'] / df_final['amount_allocated']).round(2)
     
-    # Adicionar campos de agendamento (simulados - em produção viriam do banco)
+    # Adicionar campos de agendamento para período real dos contratos
+    # Período: hoje (20/06/2025) até primeira semana de agosto (07/08/2025)
+    data_inicio_contratos = datetime.now().date()
+    data_fim_contratos = datetime(2025, 8, 7).date()  # Primeira semana de agosto
+    
+    # Calcular número de dias úteis no período (excluindo fins de semana)
+    dias_periodo = (data_fim_contratos - data_inicio_contratos).days + 1
+    
+    # Distribuir as cargas ao longo do período contratual
     df_final['data_agendamento'] = pd.date_range(
-        start=datetime.now().date(),
-        periods=len(df_final),
-        freq='D'
-    )
+        start=data_inicio_contratos,
+        end=data_fim_contratos,
+        periods=len(df_final)
+    ).date
     
     # Adicionar prioridade baseada na margem de lucro
     df_final['prioridade'] = pd.cut(
@@ -371,7 +379,7 @@ def aplicar_filtros_ordenacao(df):
         
         data_fim = st.date_input(
             "Data Fim",
-            value=datetime.now().date() + timedelta(days=180),  # Expandido para 6 meses
+            value=datetime(2025, 8, 7).date(),  # Ajustado para fim dos contratos
             help="Data final para filtrar agendamentos"
         )
     
