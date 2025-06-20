@@ -14,6 +14,7 @@ import os
 import folium
 from streamlit_folium import st_folium
 import numpy as np
+import hashlib
 
 # Configuração da página
 st.set_page_config(
@@ -377,6 +378,10 @@ def aplicar_filtros_ordenacao(df):
     
     with col_limpar2:
         if st.button("🔄 Limpar Todos os Filtros", help="Seleciona todos os itens em todos os filtros"):
+            # Limpar cache do mapa e outros componentes
+            if 'mapa_cache' in st.session_state:
+                del st.session_state['mapa_cache']
+            # Forçar rerun para resetar todos os filtros
             st.rerun()
     
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -406,6 +411,9 @@ def aplicar_filtros_ordenacao(df):
         # Botão para selecionar todos os grãos
         if st.button("✅ Todos os Grãos", key="btn_grains"):
             st.session_state['grains_all'] = True
+            # Limpar cache do mapa
+            if 'mapa_cache' in st.session_state:
+                del st.session_state['mapa_cache']
             st.rerun()
         
         # Aplicar seleção de todos se o botão foi clicado
@@ -423,6 +431,9 @@ def aplicar_filtros_ordenacao(df):
         # Botão para selecionar todas as prioridades
         if st.button("✅ Todas as Prioridades", key="btn_prioridades"):
             st.session_state['prioridades_all'] = True
+            # Limpar cache do mapa
+            if 'mapa_cache' in st.session_state:
+                del st.session_state['mapa_cache']
             st.rerun()
             
         # Aplicar seleção de todas se o botão foi clicado
@@ -442,6 +453,9 @@ def aplicar_filtros_ordenacao(df):
         # Botão para selecionar todos os vendedores
         if st.button("✅ Todos os Vendedores", key="btn_sellers"):
             st.session_state['sellers_all'] = True
+            # Limpar cache do mapa
+            if 'mapa_cache' in st.session_state:
+                del st.session_state['mapa_cache']
             st.rerun()
             
         # Aplicar seleção de todos se o botão foi clicado
@@ -460,6 +474,9 @@ def aplicar_filtros_ordenacao(df):
         # Botão para selecionar todos os compradores
         if st.button("✅ Todos os Compradores", key="btn_buyers"):
             st.session_state['buyers_all'] = True
+            # Limpar cache do mapa
+            if 'mapa_cache' in st.session_state:
+                del st.session_state['mapa_cache']
             st.rerun()
             
         # Aplicar seleção de todos se o botão foi clicado
@@ -1191,9 +1208,14 @@ with tab5:
                         st.metric("Distância Média", f"{dist_media:.1f} km")
                 
                 # Renderizar mapa com tamanho baseado no modo
+                # Criar key dinâmica baseada nos filtros para forçar atualização
+                filtros_str = f"{sorted(df_mapa['id'].tolist())}_{modo_fullscreen}"
+                filtros_hash = hashlib.md5(filtros_str.encode()).hexdigest()[:8]
+                map_key = f"mapa_{filtros_hash}"
+                
                 if modo_fullscreen:
                     # Modo full screen: mapa muito maior
-                    map_data = st_folium(mapa, width=1400, height=800)
+                    map_data = st_folium(mapa, width=1400, height=800, key=map_key)
                     
                     # Informações compactas em full screen
                     st.markdown(f"""
@@ -1203,7 +1225,7 @@ with tab5:
                     """)
                 else:
                     # Modo normal
-                    map_data = st_folium(mapa, width=1200, height=600)
+                    map_data = st_folium(mapa, width=1200, height=600, key=map_key)
                 
                 # Legenda
                 st.markdown("""
