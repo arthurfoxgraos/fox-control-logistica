@@ -355,13 +355,6 @@ def processar_dados_logistica(df):
         periods=len(df_final)
     )  # Manter como datetime para compatibilidade com filtros
     
-    # Adicionar prioridade baseada na margem de lucro
-    df_final['prioridade'] = pd.cut(
-        df_final['margem_lucro'], 
-        bins=[-float('inf'), 10, 20, float('inf')], 
-        labels=['Baixa', 'Média', 'Alta']
-    )
-    
     # Adicionar status de agendamento
     df_final['status'] = 'Agendado'
     
@@ -380,7 +373,6 @@ def aplicar_filtros_ordenacao(df):
         if st.button("🔄 Limpar Todos os Filtros", help="Seleciona todos os itens em todos os filtros"):
             # Resetar todos os filtros para seleção completa
             st.session_state['grains_selected'] = df['grain'].unique().tolist()
-            st.session_state['prioridades_selected'] = df['prioridade'].unique().tolist()
             st.session_state['sellers_selected'] = df['seller'].unique().tolist()
             st.session_state['buyers_selected'] = df['buyer'].unique().tolist()
             # Limpar cache do mapa e outros componentes
@@ -433,39 +425,6 @@ def aplicar_filtros_ordenacao(df):
             if 'mapa_cache' in st.session_state:
                 del st.session_state['mapa_cache']
             st.rerun()
-        
-        # Filtro por prioridade
-        # Inicializar session_state se não existir
-        if 'prioridades_selected' not in st.session_state:
-            st.session_state['prioridades_selected'] = df['prioridade'].unique().tolist()
-        
-        # Aplicar seleção de todas se o botão foi clicado
-        if st.session_state.get('prioridades_all', False):
-            st.session_state['prioridades_selected'] = df['prioridade'].unique().tolist()
-            st.session_state['prioridades_all'] = False
-        
-        prioridade_filter = st.multiselect(
-            "Filtrar por Prioridade",
-            options=df['prioridade'].unique(),
-            default=st.session_state['prioridades_selected'],
-            key="prioridades_multiselect"
-        )
-        
-        # Atualizar session_state com a seleção atual
-        st.session_state['prioridades_selected'] = prioridade_filter
-        
-        # Botão para selecionar todas as prioridades
-        if st.button("✅ Todas as Prioridades", key="btn_prioridades"):
-            st.session_state['prioridades_all'] = True
-            # Limpar cache do mapa
-            if 'mapa_cache' in st.session_state:
-                del st.session_state['mapa_cache']
-            st.rerun()
-            
-        # Aplicar seleção de todas se o botão foi clicado
-        if st.session_state.get('prioridades_all', False):
-            st.session_state['prioridades_selected'] = df['prioridade'].unique().tolist()
-            st.session_state['prioridades_all'] = False
     
     with col3:
         # Filtro por vendedor
@@ -530,7 +489,6 @@ def aplicar_filtros_ordenacao(df):
         # Ordenação
         ordem_opcoes = {
             'Data Agendamento': 'data_agendamento',
-            'Prioridade': 'prioridade',
             'Distância': 'distance',
             'Sacas': 'amount_allocated',
             'Margem Lucro': 'margem_lucro',
@@ -551,7 +509,6 @@ def aplicar_filtros_ordenacao(df):
         (df['data_agendamento'] >= pd.to_datetime(data_inicio)) &
         (df['data_agendamento'] <= pd.to_datetime(data_fim)) &
         (df['grain'].isin(grains_filter)) &
-        (df['prioridade'].isin(prioridade_filter)) &
         (df['seller'].isin(sellers_filter)) &
         (df['buyer'].isin(buyers_filter))
     ]
@@ -823,7 +780,7 @@ with col6:
     )
 
 # Tabs para diferentes visualizações
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Agendamento", "🚛 Editar Caminhões", "📈 Analytics", "🗺️ Rotas", "🗺️ Mapa", "⚙️ Simulador"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Agendamento", "📈 Analytics", "🗺️ Rotas", "🗺️ Mapa", "⚙️ Simulador"])
 
 with tab1:
     st.header("📋 Cronograma de Cargas")
@@ -857,54 +814,108 @@ with tab1:
         if st.button("📅 Reagendar"):
             st.success(f"✅ Carga reagendada para {nova_data.strftime('%d/%m/%Y')}")
     
-    # Tabela principal de agendamento
-    st.subheader("📊 Lista de Cargas Agendadas")
+    # Tabela principal de agendamento com edição inline
+    st.subheader("📊 Lista de Cargas Agendadas - Edição Inline")
     
-    # Preparar dados para exibição
-    display_df = df_filtered[[
-        'id', 'data_agendamento', 'prioridade', 'buyer', 'seller', 'grain', 
+    # Preparar dados para edição
+    edit_df = df_filtered[[
+        'id', 'data_agendamento', 'buyer', 'seller', 'grain', 
         'amount_allocated', 'distance', 'viagens_necessarias', 'caminhoes_necessarios', 
         'dias_operacao', 'frete_por_saca', 'margem_lucro', 'ajuste_manual', 'status'
     ]].copy()
     
     # Renomear colunas para melhor visualização
-    display_df.columns = [
-        'ID', 'Data', 'Prioridade', 'Comprador', 'Vendedor', 'Grão', 'Sacas', 
+    edit_df.columns = [
+        'ID', 'Data Agendamento', 'Comprador', 'Vendedor', 'Grão', 'Sacas', 
         'Dist.(km)', 'Viagens', 'Caminhões', 'Dias', 'Frete/Saca', 'Margem(%)', 'Manual', 'Status'
     ]
     
-    # Formatar valores
-    display_df['Data'] = pd.to_datetime(display_df['Data']).dt.strftime('%d/%m/%Y')
-    display_df['Sacas'] = display_df['Sacas'].apply(lambda x: f"{x:,.0f}")
-    display_df['Dist.(km)'] = display_df['Dist.(km)'].apply(lambda x: f"{x:.1f}")
-    display_df['Frete/Saca'] = display_df['Frete/Saca'].apply(lambda x: f"R$ {x:.2f}")
-    display_df['Margem(%)'] = display_df['Margem(%)'].apply(lambda x: f"{x:.1f}%")
-    display_df['Comprador'] = display_df['Comprador'].apply(lambda x: x[:25] + "..." if len(x) > 25 else x)
-    display_df['Vendedor'] = display_df['Vendedor'].apply(lambda x: x[:20] + "..." if len(x) > 20 else x)
-    display_df['Manual'] = display_df['Manual'].apply(lambda x: "✏️" if x else "🔢")
+    # Configurar colunas editáveis
+    column_config = {
+        'ID': st.column_config.NumberColumn('ID', disabled=True),
+        'Data Agendamento': st.column_config.DateColumn(
+            'Data Agendamento',
+            help="Clique para editar a data de agendamento",
+            format="DD/MM/YYYY"
+        ),
+        'Comprador': st.column_config.TextColumn('Comprador', disabled=True, width="medium"),
+        'Vendedor': st.column_config.TextColumn('Vendedor', disabled=True, width="medium"),
+        'Grão': st.column_config.TextColumn('Grão', disabled=True),
+        'Sacas': st.column_config.NumberColumn('Sacas', disabled=True, format="%.0f"),
+        'Dist.(km)': st.column_config.NumberColumn('Dist.(km)', disabled=True, format="%.1f"),
+        'Viagens': st.column_config.NumberColumn('Viagens', disabled=True),
+        'Caminhões': st.column_config.NumberColumn(
+            'Caminhões',
+            help="Clique para editar o número de caminhões",
+            min_value=1,
+            max_value=50,
+            step=1
+        ),
+        'Dias': st.column_config.NumberColumn('Dias', disabled=True),
+        'Frete/Saca': st.column_config.NumberColumn('Frete/Saca', disabled=True, format="R$ %.2f"),
+        'Margem(%)': st.column_config.NumberColumn('Margem(%)', disabled=True, format="%.1f%%"),
+        'Manual': st.column_config.CheckboxColumn('Manual', disabled=True),
+        'Status': st.column_config.TextColumn('Status', disabled=True)
+    }
     
-    # Colorir por prioridade e ajuste manual
-    def colorir_linha(row):
-        if row['Manual'] == "✏️":
-            return ['background-color: #e6f3ff'] * len(row)  # Azul claro para ajustes manuais
-        elif row['Prioridade'] == 'Alta':
-            return ['background-color: #ffcccc'] * len(row)
-        elif row['Prioridade'] == 'Média':
-            return ['background-color: #ffffcc'] * len(row)
-        else:
-            return ['background-color: #ccffcc'] * len(row)
+    # Editor de dados interativo
+    edited_df = st.data_editor(
+        edit_df,
+        column_config=column_config,
+        use_container_width=True,
+        num_rows="fixed",
+        key="tabela_edicao_principal"
+    )
     
-    styled_df = display_df.style.apply(colorir_linha, axis=1)
-    st.dataframe(styled_df, use_container_width=True)
+    # Detectar mudanças e salvar automaticamente
+    if not edit_df.equals(edited_df):
+        st.info("💾 Mudanças detectadas! Processando alterações...")
+        
+        # Comparar linha por linha para identificar mudanças
+        for idx, (original_row, edited_row) in enumerate(zip(edit_df.itertuples(), edited_df.itertuples())):
+            original_caminhoes = original_row[9]  # Coluna Caminhões
+            edited_caminhoes = edited_row[9]
+            original_data = original_row[2]  # Coluna Data Agendamento  
+            edited_data = edited_row[2]
+            
+            id_carga = original_row[1]  # Coluna ID
+            
+            # Verificar mudança no número de caminhões
+            if original_caminhoes != edited_caminhoes:
+                # Salvar ajuste no banco
+                caminhoes_calculado = df_filtered[df_filtered['id'] == id_carga]['caminhoes_calculado'].iloc[0]
+                if salvar_ajuste_caminhoes(
+                    id_carga, 
+                    edited_caminhoes, 
+                    int(caminhoes_calculado),
+                    "admin",
+                    f"Ajuste via edição inline - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+                ):
+                    st.success(f"✅ Caminhões atualizados para ID {id_carga}: {edited_caminhoes}")
+                else:
+                    st.error(f"❌ Erro ao salvar ajuste para ID {id_carga}")
+            
+            # Verificar mudança na data (aqui você pode implementar salvamento da data se necessário)
+            if original_data != edited_data:
+                st.info(f"📅 Data alterada para ID {id_carga}: {edited_data.strftime('%d/%m/%Y')}")
+        
+        # Recarregar dados após mudanças
+        st.cache_data.clear()
+        st.rerun()
     
-    # Legenda
-    st.caption("🔢 = Cálculo Automático | ✏️ = Ajuste Manual | 🟦 = Linha com Ajuste Manual")
+    # Instruções de uso
+    st.caption("""
+    **💡 Como usar a edição inline:**
+    - 📅 **Data**: Clique na célula da data para alterar o agendamento
+    - 🚛 **Caminhões**: Clique na célula de caminhões para ajustar manualmente
+    - 💾 **Salvamento**: Alterações são salvas automaticamente no banco
+    - ✏️ **Manual**: Indica se o número de caminhões foi ajustado manualmente
+    """)
+    
+    # Legenda de cores
+    st.caption("✏️ = Ajuste Manual | 🔢 = Cálculo Automático")
 
 with tab2:
-    # Interface de edição de caminhões
-    interface_edicao_caminhoes(df_filtered)
-
-with tab3:
     st.header("📈 Analytics de Frete e Logística")
     
     col1, col2 = st.columns(2)
@@ -985,7 +996,7 @@ with tab3:
         else:
             st.info("📊 Não há dados suficientes para exibir o gráfico de eficiência.")
 
-with tab4:
+with tab3:
     st.header("🗺️ Otimização de Rotas por Data")
     
     # Análise de rotas por data
@@ -1057,7 +1068,7 @@ with tab4:
     else:
         st.info("📊 Não há dados suficientes para calcular otimizações.")
 
-with tab5:
+with tab4:
     st.header("🗺️ Visualização de Rotas no Mapa")
     
     # Botão para modo full screen
@@ -1306,7 +1317,7 @@ with tab5:
     else:
         st.warning("⚠️ Coordenadas não disponíveis nos dados. Verifique se as colunas 'from_coords' e 'to_coords' existem no banco de dados.")
 
-with tab6:
+with tab5:
     st.header("⚙️ Simulador de Cenários de Frete")
     
     st.markdown("**Simule diferentes cenários alterando os parâmetros:**")
