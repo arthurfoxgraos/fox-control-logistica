@@ -11,6 +11,9 @@ import psycopg2
 from decimal import Decimal
 import json
 import os
+import folium
+from streamlit_folium import st_folium
+import numpy as np
 
 # Configuração da página
 st.set_page_config(
@@ -267,7 +270,9 @@ def conectar_banco_dados():
             profit_total,
             distance,
             buyer,
-            seller
+            seller,
+            from_coords,
+            to_coords
         FROM provisioningsv2_best_scenario_distance
         ORDER BY id;
         """
@@ -759,7 +764,7 @@ with col6:
     )
 
 # Tabs para diferentes visualizações
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Agendamento", "🚛 Editar Caminhões", "📈 Analytics", "🗺️ Rotas", "⚙️ Simulador"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Agendamento", "🚛 Editar Caminhões", "📈 Analytics", "🗺️ Rotas", "🗺️ Mapa", "⚙️ Simulador"])
 
 with tab1:
     st.header("📋 Cronograma de Cargas")
@@ -994,6 +999,219 @@ with tab4:
         st.info("📊 Não há dados suficientes para calcular otimizações.")
 
 with tab5:
+    st.header("🗺️ Visualização de Rotas no Mapa")
+    
+    if not df_filtered.empty and 'from_coords' in df_filtered.columns and 'to_coords' in df_filtered.columns:
+        # Filtros específicos para o mapa
+        st.subheader("🔍 Filtros do Mapa")
+        
+        col_map1, col_map2, col_map3 = st.columns(3)
+        
+        with col_map1:
+            # Filtro por número de cargas a exibir
+            max_rotas = st.slider(
+                "Número máximo de rotas",
+                min_value=1,
+                max_value=min(50, len(df_filtered)),
+                value=min(20, len(df_filtered)),
+                help="Limite de rotas para melhor visualização"
+            )
+        
+        with col_map2:
+            # Filtro por distância
+            if not df_filtered.empty:
+                dist_min = float(df_filtered['distance'].min())
+                dist_max = float(df_filtered['distance'].max())
+                
+                distancia_range = st.slider(
+                    "Faixa de distância (km)",
+                    min_value=dist_min,
+                    max_value=dist_max,
+                    value=(dist_min, dist_max),
+                    step=0.1
+                )
+        
+        with col_map3:
+            # Tipo de visualização
+            tipo_viz = st.selectbox(
+                "Tipo de visualização",
+                ["Todas as rotas", "Por vendedor", "Por comprador", "Por volume"],
+                help="Como agrupar as rotas no mapa"
+            )
+        
+        # Aplicar filtros específicos do mapa
+        df_mapa = df_filtered[
+            (df_filtered['distance'] >= distancia_range[0]) &
+            (df_filtered['distance'] <= distancia_range[1])
+        ].head(max_rotas)
+        
+        if not df_mapa.empty:
+            # Processar coordenadas
+            def extrair_coordenadas(coord_array):
+                """Extrai latitude e longitude de um array de coordenadas"""
+                if coord_array is None or coord_array == '':
+                    return None, None
+                try:
+                    # Se for string, converter para lista
+                    if isinstance(coord_array, str):
+                        coord_array = eval(coord_array)
+                    
+                    if isinstance(coord_array, list) and len(coord_array) >= 2:
+                        return float(coord_array[1]), float(coord_array[0])  # lat, lon
+                    return None, None
+                except:
+                    return None, None
+            
+            # Extrair coordenadas de origem e destino
+            coordenadas_validas = []
+            for _, row in df_mapa.iterrows():
+                lat_origem, lon_origem = extrair_coordenadas(row['from_coords'])
+                lat_destino, lon_destino = extrair_coordenadas(row['to_coords'])
+                
+                if all(coord is not None for coord in [lat_origem, lon_origem, lat_destino, lon_destino]):
+                    coordenadas_validas.append({
+                        'id': row['id'],
+                        'vendedor': row['seller'][:30] + "..." if len(row['seller']) > 30 else row['seller'],
+                        'comprador': row['buyer'][:30] + "..." if len(row['buyer']) > 30 else row['buyer'],
+                        'sacas': row['amount_allocated'],
+                        'distancia': row['distance'],
+                        'frete_saca': row['frete_por_saca'],
+                        'lat_origem': lat_origem,
+                        'lon_origem': lon_origem,
+                        'lat_destino': lat_destino,
+                        'lon_destino': lon_destino
+                    })
+            
+            if coordenadas_validas:
+                # Calcular centro do mapa
+                todas_lats = []
+                todas_lons = []
+                for coord in coordenadas_validas:
+                    todas_lats.extend([coord['lat_origem'], coord['lat_destino']])
+                    todas_lons.extend([coord['lon_origem'], coord['lon_destino']])
+                
+                centro_lat = sum(todas_lats) / len(todas_lats)
+                centro_lon = sum(todas_lons) / len(todas_lons)
+                
+                # Criar mapa
+                mapa = folium.Map(
+                    location=[centro_lat, centro_lon],
+                    zoom_start=10,
+                    tiles='OpenStreetMap'
+                )
+                
+                # Cores para diferentes tipos
+                cores = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'lightred', 
+                        'beige', 'darkblue', 'darkgreen', 'cadetblue', 'darkpurple', 'white', 
+                        'pink', 'lightblue', 'lightgreen', 'gray', 'black', 'lightgray']
+                
+                # Adicionar rotas ao mapa
+                for i, coord in enumerate(coordenadas_validas):
+                    cor = cores[i % len(cores)]
+                    
+                    # Marcador de origem (vendedor)
+                    folium.Marker(
+                        location=[coord['lat_origem'], coord['lon_origem']],
+                        popup=f"""
+                        <b>🌾 ORIGEM</b><br>
+                        <b>Vendedor:</b> {coord['vendedor']}<br>
+                        <b>Sacas:</b> {coord['sacas']:,.0f}<br>
+                        <b>ID:</b> {coord['id']}
+                        """,
+                        tooltip=f"Origem: {coord['vendedor']}",
+                        icon=folium.Icon(color='green', icon='leaf')
+                    ).add_to(mapa)
+                    
+                    # Marcador de destino (comprador)
+                    folium.Marker(
+                        location=[coord['lat_destino'], coord['lon_destino']],
+                        popup=f"""
+                        <b>🏭 DESTINO</b><br>
+                        <b>Comprador:</b> {coord['comprador']}<br>
+                        <b>Distância:</b> {coord['distancia']:.1f} km<br>
+                        <b>Frete/Saca:</b> R$ {coord['frete_saca']:.2f}
+                        """,
+                        tooltip=f"Destino: {coord['comprador']}",
+                        icon=folium.Icon(color='red', icon='industry')
+                    ).add_to(mapa)
+                    
+                    # Linha conectando origem e destino
+                    folium.PolyLine(
+                        locations=[
+                            [coord['lat_origem'], coord['lon_origem']],
+                            [coord['lat_destino'], coord['lon_destino']]
+                        ],
+                        color=cor,
+                        weight=3,
+                        opacity=0.8,
+                        popup=f"""
+                        <b>🚛 ROTA {coord['id']}</b><br>
+                        <b>De:</b> {coord['vendedor']}<br>
+                        <b>Para:</b> {coord['comprador']}<br>
+                        <b>Distância:</b> {coord['distancia']:.1f} km<br>
+                        <b>Volume:</b> {coord['sacas']:,.0f} sacas<br>
+                        <b>Frete/Saca:</b> R$ {coord['frete_saca']:.2f}
+                        """
+                    ).add_to(mapa)
+                
+                # Exibir mapa
+                st.subheader(f"🗺️ Mapa com {len(coordenadas_validas)} Rotas")
+                
+                # Informações do mapa
+                col_info1, col_info2, col_info3 = st.columns(3)
+                
+                with col_info1:
+                    st.metric("Rotas Exibidas", len(coordenadas_validas))
+                
+                with col_info2:
+                    total_sacas = sum(coord['sacas'] for coord in coordenadas_validas)
+                    st.metric("Total de Sacas", f"{total_sacas:,.0f}")
+                
+                with col_info3:
+                    dist_media = sum(coord['distancia'] for coord in coordenadas_validas) / len(coordenadas_validas)
+                    st.metric("Distância Média", f"{dist_media:.1f} km")
+                
+                # Renderizar mapa
+                map_data = st_folium(mapa, width=1200, height=600)
+                
+                # Legenda
+                st.markdown("""
+                **🗺️ Legenda do Mapa:**
+                - 🌾 **Marcadores Verdes**: Origem (Vendedores/Produtores)
+                - 🏭 **Marcadores Vermelhos**: Destino (Compradores)
+                - **Linhas Coloridas**: Rotas de transporte
+                - **Clique nos marcadores**: Ver detalhes da operação
+                - **Clique nas linhas**: Ver informações da rota
+                """)
+                
+                # Estatísticas das rotas exibidas
+                if coordenadas_validas:
+                    st.subheader("📊 Estatísticas das Rotas Exibidas")
+                    
+                    df_stats = pd.DataFrame(coordenadas_validas)
+                    
+                    col_stat1, col_stat2 = st.columns(2)
+                    
+                    with col_stat1:
+                        st.markdown("**🎯 Top 5 Maiores Volumes:**")
+                        top_volumes = df_stats.nlargest(5, 'sacas')[['vendedor', 'sacas', 'distancia']]
+                        for _, row in top_volumes.iterrows():
+                            st.write(f"• {row['vendedor']}: {row['sacas']:,.0f} sacas ({row['distancia']:.1f} km)")
+                    
+                    with col_stat2:
+                        st.markdown("**🚛 Top 5 Maiores Distâncias:**")
+                        top_dist = df_stats.nlargest(5, 'distancia')[['vendedor', 'comprador', 'distancia']]
+                        for _, row in top_dist.iterrows():
+                            st.write(f"• {row['distancia']:.1f} km: {row['vendedor'][:20]}... → {row['comprador'][:20]}...")
+                
+            else:
+                st.warning("⚠️ Nenhuma coordenada válida encontrada nos dados filtrados.")
+        else:
+            st.info("📊 Nenhum dado disponível com os filtros aplicados.")
+    else:
+        st.warning("⚠️ Coordenadas não disponíveis nos dados. Verifique se as colunas 'from_coords' e 'to_coords' existem no banco de dados.")
+
+with tab6:
     st.header("⚙️ Simulador de Cenários de Frete")
     
     st.markdown("**Simule diferentes cenários alterando os parâmetros:**")
