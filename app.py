@@ -378,6 +378,11 @@ def aplicar_filtros_ordenacao(df):
     
     with col_limpar2:
         if st.button("🔄 Limpar Todos os Filtros", help="Seleciona todos os itens em todos os filtros"):
+            # Resetar todos os filtros para seleção completa
+            st.session_state['grains_selected'] = df['grain'].unique().tolist()
+            st.session_state['prioridades_selected'] = df['prioridade'].unique().tolist()
+            st.session_state['sellers_selected'] = df['seller'].unique().tolist()
+            st.session_state['buyers_selected'] = df['buyer'].unique().tolist()
             # Limpar cache do mapa e outros componentes
             if 'mapa_cache' in st.session_state:
                 del st.session_state['mapa_cache']
@@ -402,11 +407,24 @@ def aplicar_filtros_ordenacao(df):
     
     with col2:
         # Filtro por grão
+        # Inicializar session_state se não existir
+        if 'grains_selected' not in st.session_state:
+            st.session_state['grains_selected'] = df['grain'].unique().tolist()
+        
+        # Aplicar seleção de todos se o botão foi clicado
+        if st.session_state.get('grains_all', False):
+            st.session_state['grains_selected'] = df['grain'].unique().tolist()
+            st.session_state['grains_all'] = False
+        
         grains_filter = st.multiselect(
             "Filtrar por Grão",
             options=df['grain'].unique(),
-            default=df['grain'].unique()
+            default=st.session_state['grains_selected'],
+            key="grains_multiselect"
         )
+        
+        # Atualizar session_state com a seleção atual
+        st.session_state['grains_selected'] = grains_filter
         
         # Botão para selecionar todos os grãos
         if st.button("✅ Todos os Grãos", key="btn_grains"):
@@ -416,17 +434,25 @@ def aplicar_filtros_ordenacao(df):
                 del st.session_state['mapa_cache']
             st.rerun()
         
-        # Aplicar seleção de todos se o botão foi clicado
-        if st.session_state.get('grains_all', False):
-            grains_filter = df['grain'].unique().tolist()
-            st.session_state['grains_all'] = False
-        
         # Filtro por prioridade
+        # Inicializar session_state se não existir
+        if 'prioridades_selected' not in st.session_state:
+            st.session_state['prioridades_selected'] = df['prioridade'].unique().tolist()
+        
+        # Aplicar seleção de todas se o botão foi clicado
+        if st.session_state.get('prioridades_all', False):
+            st.session_state['prioridades_selected'] = df['prioridade'].unique().tolist()
+            st.session_state['prioridades_all'] = False
+        
         prioridade_filter = st.multiselect(
             "Filtrar por Prioridade",
             options=df['prioridade'].unique(),
-            default=df['prioridade'].unique()
+            default=st.session_state['prioridades_selected'],
+            key="prioridades_multiselect"
         )
+        
+        # Atualizar session_state com a seleção atual
+        st.session_state['prioridades_selected'] = prioridade_filter
         
         # Botão para selecionar todas as prioridades
         if st.button("✅ Todas as Prioridades", key="btn_prioridades"):
@@ -438,17 +464,30 @@ def aplicar_filtros_ordenacao(df):
             
         # Aplicar seleção de todas se o botão foi clicado
         if st.session_state.get('prioridades_all', False):
-            prioridade_filter = df['prioridade'].unique().tolist()
+            st.session_state['prioridades_selected'] = df['prioridade'].unique().tolist()
             st.session_state['prioridades_all'] = False
     
     with col3:
         # Filtro por vendedor
+        # Inicializar session_state se não existir
+        if 'sellers_selected' not in st.session_state:
+            st.session_state['sellers_selected'] = df['seller'].unique().tolist()
+        
+        # Aplicar seleção de todos se o botão foi clicado
+        if st.session_state.get('sellers_all', False):
+            st.session_state['sellers_selected'] = df['seller'].unique().tolist()
+            st.session_state['sellers_all'] = False
+        
         sellers_filter = st.multiselect(
             "Filtrar por Vendedor",
             options=df['seller'].unique(),
-            default=df['seller'].unique(),  # Incluir todos os vendedores por padrão
-            help="Selecione os vendedores/produtores para filtrar"
+            default=st.session_state['sellers_selected'],
+            help="Selecione os vendedores/produtores para filtrar",
+            key="sellers_multiselect"
         )
+        
+        # Atualizar session_state com a seleção atual
+        st.session_state['sellers_selected'] = sellers_filter
         
         # Botão para selecionar todos os vendedores
         if st.button("✅ Todos os Vendedores", key="btn_sellers"):
@@ -457,19 +496,27 @@ def aplicar_filtros_ordenacao(df):
             if 'mapa_cache' in st.session_state:
                 del st.session_state['mapa_cache']
             st.rerun()
-            
-        # Aplicar seleção de todos se o botão foi clicado
-        if st.session_state.get('sellers_all', False):
-            sellers_filter = df['seller'].unique().tolist()
-            st.session_state['sellers_all'] = False
     
     with col4:
         # Filtro por comprador
+        # Inicializar session_state se não existir
+        if 'buyers_selected' not in st.session_state:
+            st.session_state['buyers_selected'] = df['buyer'].unique().tolist()
+        
+        # Aplicar seleção de todos se o botão foi clicado
+        if st.session_state.get('buyers_all', False):
+            st.session_state['buyers_selected'] = df['buyer'].unique().tolist()
+            st.session_state['buyers_all'] = False
+        
         buyers_filter = st.multiselect(
             "Filtrar por Comprador",
             options=df['buyer'].unique(),
-            default=df['buyer'].unique()  # Incluir todos os compradores por padrão
+            default=st.session_state['buyers_selected'],
+            key="buyers_multiselect"
         )
+        
+        # Atualizar session_state com a seleção atual
+        st.session_state['buyers_selected'] = buyers_filter
         
         # Botão para selecionar todos os compradores
         if st.button("✅ Todos os Compradores", key="btn_buyers"):
@@ -478,11 +525,6 @@ def aplicar_filtros_ordenacao(df):
             if 'mapa_cache' in st.session_state:
                 del st.session_state['mapa_cache']
             st.rerun()
-            
-        # Aplicar seleção de todos se o botão foi clicado
-        if st.session_state.get('buyers_all', False):
-            buyers_filter = df['buyer'].unique().tolist()
-            st.session_state['buyers_all'] = False
     
     with col5:
         # Ordenação
