@@ -367,6 +367,13 @@ def aplicar_filtros_ordenacao(df):
     """
     st.header("🔍 Filtros e Ordenação")
     
+    # Botão para limpar todos os filtros
+    col_limpar1, col_limpar2, col_limpar3 = st.columns([1, 1, 1])
+    
+    with col_limpar2:
+        if st.button("🔄 Limpar Todos os Filtros", help="Seleciona todos os itens em todos os filtros"):
+            st.rerun()
+    
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
@@ -391,12 +398,32 @@ def aplicar_filtros_ordenacao(df):
             default=df['grain'].unique()
         )
         
+        # Botão para selecionar todos os grãos
+        if st.button("✅ Todos os Grãos", key="btn_grains"):
+            st.session_state['grains_all'] = True
+            st.rerun()
+        
+        # Aplicar seleção de todos se o botão foi clicado
+        if st.session_state.get('grains_all', False):
+            grains_filter = df['grain'].unique().tolist()
+            st.session_state['grains_all'] = False
+        
         # Filtro por prioridade
         prioridade_filter = st.multiselect(
             "Filtrar por Prioridade",
             options=df['prioridade'].unique(),
             default=df['prioridade'].unique()
         )
+        
+        # Botão para selecionar todas as prioridades
+        if st.button("✅ Todas as Prioridades", key="btn_prioridades"):
+            st.session_state['prioridades_all'] = True
+            st.rerun()
+            
+        # Aplicar seleção de todas se o botão foi clicado
+        if st.session_state.get('prioridades_all', False):
+            prioridade_filter = df['prioridade'].unique().tolist()
+            st.session_state['prioridades_all'] = False
     
     with col3:
         # Filtro por vendedor
@@ -406,6 +433,16 @@ def aplicar_filtros_ordenacao(df):
             default=df['seller'].unique(),  # Incluir todos os vendedores por padrão
             help="Selecione os vendedores/produtores para filtrar"
         )
+        
+        # Botão para selecionar todos os vendedores
+        if st.button("✅ Todos os Vendedores", key="btn_sellers"):
+            st.session_state['sellers_all'] = True
+            st.rerun()
+            
+        # Aplicar seleção de todos se o botão foi clicado
+        if st.session_state.get('sellers_all', False):
+            sellers_filter = df['seller'].unique().tolist()
+            st.session_state['sellers_all'] = False
     
     with col4:
         # Filtro por comprador
@@ -414,6 +451,16 @@ def aplicar_filtros_ordenacao(df):
             options=df['buyer'].unique(),
             default=df['buyer'].unique()  # Incluir todos os compradores por padrão
         )
+        
+        # Botão para selecionar todos os compradores
+        if st.button("✅ Todos os Compradores", key="btn_buyers"):
+            st.session_state['buyers_all'] = True
+            st.rerun()
+            
+        # Aplicar seleção de todos se o botão foi clicado
+        if st.session_state.get('buyers_all', False):
+            buyers_filter = df['buyer'].unique().tolist()
+            st.session_state['buyers_all'] = False
     
     with col5:
         # Ordenação
