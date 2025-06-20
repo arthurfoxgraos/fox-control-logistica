@@ -1256,8 +1256,8 @@ with tab5:
                 map_key = f"mapa_{filtros_hash}"
                 
                 if modo_fullscreen:
-                    # Modo full screen: mapa muito maior
-                    map_data = st_folium(mapa, width=1400, height=800, key=map_key)
+                    # Modo full screen: usar 100% da largura disponível
+                    map_data = st_folium(mapa, height=800, key=map_key, use_container_width=True)
                     
                     # Informações compactas em full screen
                     st.markdown(f"""
@@ -1266,8 +1266,8 @@ with tab5:
                     {sum(coord['distancia'] for coord in coordenadas_validas) / len(coordenadas_validas):.1f} km médio
                     """)
                 else:
-                    # Modo normal
-                    map_data = st_folium(mapa, width=1200, height=600, key=map_key)
+                    # Modo normal: usar 100% da largura disponível
+                    map_data = st_folium(mapa, height=600, key=map_key, use_container_width=True)
                 
                 # Legenda
                 st.markdown("""
