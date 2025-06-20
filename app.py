@@ -371,7 +371,7 @@ def aplicar_filtros_ordenacao(df):
         
         data_fim = st.date_input(
             "Data Fim",
-            value=datetime.now().date() + timedelta(days=30),
+            value=datetime.now().date() + timedelta(days=180),  # Expandido para 6 meses
             help="Data final para filtrar agendamentos"
         )
     
@@ -395,7 +395,7 @@ def aplicar_filtros_ordenacao(df):
         buyers_filter = st.multiselect(
             "Filtrar por Comprador",
             options=df['buyer'].unique(),
-            default=df['buyer'].unique()[:5]  # Limitar para não sobrecarregar
+            default=df['buyer'].unique()  # Incluir todos os compradores por padrão
         )
     
     with col4:
