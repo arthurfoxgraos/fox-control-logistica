@@ -1022,24 +1022,43 @@ with tab5:
         if not modo_fullscreen:
             st.subheader("🔍 Filtro Adicional do Mapa")
             
-            if not df_filtered.empty:
-                dist_min = float(df_filtered['distance'].min())
-                dist_max = float(df_filtered['distance'].max())
+            if 'distance' in df_filtered.columns:
+                # Validar dados de distância
+                distances = df_filtered['distance'].dropna()
                 
-                distancia_range = st.slider(
-                    "Faixa de distância (km)",
-                    min_value=dist_min,
-                    max_value=dist_max,
-                    value=(dist_min, dist_max),
-                    step=0.1,
-                    key="mapa_distancia_slider"
-                )
-                
-                # Aplicar filtro de distância
-                df_mapa = df_filtered[
-                    (df_filtered['distance'] >= distancia_range[0]) &
-                    (df_filtered['distance'] <= distancia_range[1])
-                ]
+                if not distances.empty and len(distances) > 0:
+                    dist_min = float(distances.min())
+                    dist_max = float(distances.max())
+                    
+                    # Garantir que min < max e adicionar margem mínima se necessário
+                    if dist_min >= dist_max:
+                        dist_max = dist_min + 1.0
+                    
+                    # Validar se valores são válidos
+                    if not (pd.isna(dist_min) or pd.isna(dist_max)):
+                        distancia_range = st.slider(
+                            "Faixa de distância (km)",
+                            min_value=dist_min,
+                            max_value=dist_max,
+                            value=(dist_min, dist_max),
+                            step=0.1,
+                            key="mapa_distancia_slider"
+                        )
+                        
+                        # Aplicar filtro de distância
+                        df_mapa = df_filtered[
+                            (df_filtered['distance'] >= distancia_range[0]) &
+                            (df_filtered['distance'] <= distancia_range[1])
+                        ]
+                    else:
+                        st.info("📊 Dados de distância com valores inválidos")
+                        df_mapa = df_filtered.copy()
+                else:
+                    st.info("📊 Nenhum dado de distância disponível")
+                    df_mapa = df_filtered.copy()
+            else:
+                st.info("📊 Coluna de distância não encontrada")
+                df_mapa = df_filtered.copy()
         else:
             # Em modo full screen, usar todos os dados filtrados
             df_mapa = df_filtered.copy()
