@@ -1012,9 +1012,9 @@ with tab5:
             max_rotas = st.slider(
                 "Número máximo de rotas",
                 min_value=1,
-                max_value=min(50, len(df_filtered)),
-                value=min(20, len(df_filtered)),
-                help="Limite de rotas para melhor visualização"
+                max_value=len(df_filtered),
+                value=len(df_filtered),
+                help="Limite de rotas para melhor visualização (padrão: todas as rotas)"
             )
         
         with col_map2:
