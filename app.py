@@ -1019,19 +1019,40 @@ with tab5:
         if not modo_fullscreen:
             st.subheader("🔍 Filtros do Mapa")
             
-            col_map1, col_map2, col_map3 = st.columns(3)
+            # Primeira linha de filtros
+            col_map1, col_map2 = st.columns(2)
             
             with col_map1:
-                # Filtro por número de cargas a exibir
-                max_rotas = st.slider(
-                    "Número máximo de rotas",
-                    min_value=1,
-                    max_value=len(df_filtered),
-                    value=len(df_filtered),
-                    help="Limite de rotas para melhor visualização (padrão: todas as rotas)"
+                # Filtro por vendedor/produtor
+                vendedores_mapa = st.multiselect(
+                    "Filtrar por Vendedor/Produtor",
+                    options=sorted(df_filtered['seller'].unique()),
+                    default=sorted(df_filtered['seller'].unique()),
+                    help="Selecione vendedores específicos para visualizar suas rotas"
                 )
             
             with col_map2:
+                # Filtro por comprador
+                compradores_mapa = st.multiselect(
+                    "Filtrar por Comprador",
+                    options=sorted(df_filtered['buyer'].unique()),
+                    default=sorted(df_filtered['buyer'].unique()),
+                    help="Selecione compradores específicos para visualizar suas rotas"
+                )
+            
+            # Segunda linha de filtros
+            col_map3, col_map4 = st.columns(2)
+            
+            with col_map3:
+                # Filtro por grão
+                graos_mapa = st.multiselect(
+                    "Filtrar por Grão",
+                    options=sorted(df_filtered['grain'].unique()),
+                    default=sorted(df_filtered['grain'].unique()),
+                    help="Selecione tipos de grão específicos para visualizar"
+                )
+            
+            with col_map4:
                 # Filtro por distância
                 if not df_filtered.empty:
                     dist_min = float(df_filtered['distance'].min())
@@ -1046,25 +1067,35 @@ with tab5:
                     )
             
             with col_map3:
-                # Tipo de visualização
-                tipo_viz = st.selectbox(
-                    "Tipo de visualização",
-                    ["Todas as rotas", "Por vendedor", "Por comprador", "Por volume"],
-                    help="Como agrupar as rotas no mapa"
-                )
+                # Filtro por distância
+                if not df_filtered.empty:
+                    dist_min = float(df_filtered['distance'].min())
+                    dist_max = float(df_filtered['distance'].max())
+                    
+                    distancia_range = st.slider(
+                        "Faixa de distância (km)",
+                        min_value=dist_min,
+                        max_value=dist_max,
+                        value=(dist_min, dist_max),
+                        step=0.1
+                    )
         else:
             # Em modo full screen, usar valores padrão
-            max_rotas = len(df_filtered)
+            vendedores_mapa = sorted(df_filtered['seller'].unique())
+            compradores_mapa = sorted(df_filtered['buyer'].unique())
+            graos_mapa = sorted(df_filtered['grain'].unique())
             dist_min = float(df_filtered['distance'].min())
             dist_max = float(df_filtered['distance'].max())
             distancia_range = (dist_min, dist_max)
-            tipo_viz = "Todas as rotas"
         
         # Aplicar filtros específicos do mapa
         df_mapa = df_filtered[
             (df_filtered['distance'] >= distancia_range[0]) &
-            (df_filtered['distance'] <= distancia_range[1])
-        ].head(max_rotas)
+            (df_filtered['distance'] <= distancia_range[1]) &
+            (df_filtered['seller'].isin(vendedores_mapa)) &
+            (df_filtered['buyer'].isin(compradores_mapa)) &
+            (df_filtered['grain'].isin(graos_mapa))
+        ]
         
         if not df_mapa.empty:
             # Processar coordenadas
