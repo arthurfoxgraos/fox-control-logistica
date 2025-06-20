@@ -359,7 +359,7 @@ def aplicar_filtros_ordenacao(df):
     """
     st.header("🔍 Filtros e Ordenação")
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         # Filtro por data
@@ -391,6 +391,15 @@ def aplicar_filtros_ordenacao(df):
         )
     
     with col3:
+        # Filtro por vendedor
+        sellers_filter = st.multiselect(
+            "Filtrar por Vendedor",
+            options=df['seller'].unique(),
+            default=df['seller'].unique(),  # Incluir todos os vendedores por padrão
+            help="Selecione os vendedores/produtores para filtrar"
+        )
+    
+    with col4:
         # Filtro por comprador
         buyers_filter = st.multiselect(
             "Filtrar por Comprador",
@@ -398,7 +407,7 @@ def aplicar_filtros_ordenacao(df):
             default=df['buyer'].unique()  # Incluir todos os compradores por padrão
         )
     
-    with col4:
+    with col5:
         # Ordenação
         ordem_opcoes = {
             'Data Agendamento': 'data_agendamento',
@@ -424,6 +433,7 @@ def aplicar_filtros_ordenacao(df):
         (df['data_agendamento'] <= pd.to_datetime(data_fim)) &
         (df['grain'].isin(grains_filter)) &
         (df['prioridade'].isin(prioridade_filter)) &
+        (df['seller'].isin(sellers_filter)) &
         (df['buyer'].isin(buyers_filter))
     ]
     
