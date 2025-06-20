@@ -785,35 +785,6 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Agendamento", "📈 Analytics", "�
 with tab1:
     st.header("📋 Cronograma de Cargas")
     
-    # Funcionalidade de agendamento
-    st.subheader("📅 Reagendar Cargas")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        # Seletor de carga para reagendar
-        if not df_filtered.empty:
-            opcoes_reagendamento = [
-                f"ID {row['id']} - {row['seller'][:25]}... → {row['buyer'][:25]}... - {row['amount_allocated']:,.0f} sacas"
-                for _, row in df_filtered.iterrows()
-            ]
-            
-            carga_selecionada = st.selectbox(
-                "Selecionar carga para reagendar",
-                options=opcoes_reagendamento,
-                help="Escolha uma carga para alterar a data de agendamento"
-            )
-    
-    with col2:
-        nova_data = st.date_input(
-            "Nova data de agendamento",
-            value=datetime.now().date() + timedelta(days=1),
-            help="Selecione a nova data para o carregamento"
-        )
-        
-        if st.button("📅 Reagendar"):
-            st.success(f"✅ Carga reagendada para {nova_data.strftime('%d/%m/%Y')}")
-    
     # Tabela principal de agendamento com edição inline
     st.subheader("📊 Lista de Cargas Agendadas - Edição Inline")
     
