@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "gipe-289602"
+  },
+  "targets": {
+    "foxdc-app": {
+      "hosting": {
+        "foxlogdash": [
+          "foxlogdash"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
